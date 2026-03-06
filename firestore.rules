@@ -13,6 +13,7 @@ service cloud.firestore {
           && request.resource.data.name is string
           && request.resource.data.emoji is string
           && request.resource.data.color is string;
+        allow delete: if request.auth != null && request.auth.uid == uid;
       }
 
       // Notes: validate schema

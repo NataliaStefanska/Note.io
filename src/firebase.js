@@ -92,7 +92,13 @@ export async function loadAllData(uid) {
   const spacesSnap = results[0].status === "fulfilled" ? results[0].value : null;
   const notesSnap = results[1].status === "fulfilled" ? results[1].value : null;
   const tasksSnap = results[2].status === "fulfilled" ? results[2].value : null;
-  results.forEach((r, i) => { if (r.status === "rejected") console.warn(`Failed to load ${["spaces","notes","tasks"][i]}:`, r.reason); });
+  const failedCollections = [];
+  results.forEach((r, i) => { if (r.status === "rejected") { failedCollections.push(["spaces","notes","tasks"][i]); console.warn(`Failed to load ${["spaces","notes","tasks"][i]}:`, r.reason); } });
+
+  // If ALL subcollection reads failed, throw so AppContext doesn't overwrite real data with demo data
+  if (failedCollections.length === 3) {
+    throw new Error("All subcollection reads failed: " + failedCollections.join(", "));
+  }
 
   const spaces = [];
   if (spacesSnap) spacesSnap.forEach(d => spaces.push({ id: d.id, ...d.data() }));

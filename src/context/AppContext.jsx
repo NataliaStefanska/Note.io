@@ -60,6 +60,7 @@ export function AppProvider({ children }) {
   const saveToastTimer = useRef(null);
   const autoSaveTimer = useRef(null);
   const autoSaveStatusTimer = useRef(null);
+  const dataLoadedRef = useRef(false);
 
   // B1 fix: keep refs to latest state so saveNote/triggerAutoSave always read fresh values
   const activeRef = useRef(active);
@@ -104,12 +105,26 @@ export function AppProvider({ children }) {
           if (data.standaloneTasks) setStandaloneTasks(data.standaloneTasks);
           if (data.lang) setLang(data.lang);
         }
+        // Mark data as loaded so sync can start — prevents INITIAL_NOTES from overwriting real data
+        dataLoadedRef.current = true;
+        // Reset prev refs to the loaded state so the first sync doesn't re-save loaded data
+        prevAllNotes.current = data?.allNotes || allNotes;
+        prevStandaloneTasks.current = data?.standaloneTasks || standaloneTasks;
+        prevSpaces.current = data?.spaces || spaces;
+        prevLang.current = data?.lang || lang;
+        prevActiveSpace.current = data?.activeSpace || activeSpace;
         setSyncStatus("synced");
       }).catch(err => {
         console.warn("Firebase load failed, using local data:", err?.message || err);
         setSyncStatus(navigator.onLine ? "error" : "offline");
       });
     } else {
+      dataLoadedRef.current = false;
+      prevAllNotes.current = null;
+      prevStandaloneTasks.current = null;
+      prevSpaces.current = null;
+      prevLang.current = null;
+      prevActiveSpace.current = null;
       setSpaces(INITIAL_SPACES);
       setAllNotes(INITIAL_NOTES);
       setStandaloneTasks({});
@@ -126,7 +141,7 @@ export function AppProvider({ children }) {
   const prevActiveSpace = useRef(null);
 
   const syncToFirestore = useCallback(() => {
-    if (!user || authLoading) return;
+    if (!user || authLoading || !dataLoadedRef.current) return;
     if (syncTimer.current) clearTimeout(syncTimer.current);
     syncTimer.current = setTimeout(async () => {
       setSyncStatus("saving");
@@ -176,6 +191,40 @@ export function AppProvider({ children }) {
     syncToFirestore();
     return () => { if (syncTimer.current) clearTimeout(syncTimer.current); };
   }, [spaces, activeSpace, allNotes, standaloneTasks, lang, user, authLoading, syncToFirestore]);
+
+  // Flush pending sync on page unload to prevent data loss
+  const flushSyncRef = useRef(null);
+  useEffect(() => {
+    flushSyncRef.current = { user, authLoading, allNotes, standaloneTasks, spaces, lang, activeSpace, prevAllNotes, prevStandaloneTasks, prevSpaces, prevLang, prevActiveSpace };
+  });
+  useEffect(() => {
+    const handleBeforeUnload = () => {
+      const s = flushSyncRef.current;
+      if (!s || !s.user || s.authLoading || !dataLoadedRef.current) return;
+      if (syncTimer.current) clearTimeout(syncTimer.current);
+      const uid = s.user.uid;
+      if (s.lang !== s.prevLang.current || s.activeSpace !== s.prevActiveSpace.current) {
+        saveUserPrefs(uid, { lang: s.lang, activeSpace: s.activeSpace });
+      }
+      if (s.spaces !== s.prevSpaces.current) {
+        saveAllSpaces(uid, s.spaces);
+      }
+      if (s.allNotes !== s.prevAllNotes.current) {
+        for (const [spaceId, notes] of Object.entries(s.allNotes)) {
+          const prev = s.prevAllNotes.current ? s.prevAllNotes.current[spaceId] : null;
+          if (notes !== prev) saveAllNotes(uid, notes, spaceId);
+        }
+      }
+      if (s.standaloneTasks !== s.prevStandaloneTasks.current) {
+        for (const [spaceId, tasks] of Object.entries(s.standaloneTasks)) {
+          const prev = s.prevStandaloneTasks.current ? s.prevStandaloneTasks.current[spaceId] : null;
+          if (tasks !== prev) saveAllTasks(uid, tasks, spaceId);
+        }
+      }
+    };
+    window.addEventListener("beforeunload", handleBeforeUnload);
+    return () => window.removeEventListener("beforeunload", handleBeforeUnload);
+  }, []);
 
   // Derived values
   const notes  = useMemo(() => allNotes[activeSpace] || [], [allNotes, activeSpace]);
@@ -409,6 +458,17 @@ export function AppProvider({ children }) {
   function editStandaloneTask(taskId, newText) {
     setStandaloneTasks(prev=>({...prev,[activeSpace]:(prev[activeSpace]||[]).map(t=>t.id===taskId?{...t,text:newText}:t)}));
   }
+  function removeStandaloneTask(taskId) {
+    setStandaloneTasks(prev=>({...prev,[activeSpace]:(prev[activeSpace]||[]).filter(t=>t.id!==taskId)}));
+  }
+  function archiveDoneTasks() {
+    // Archive completed tasks in notes
+    setAllNotes(prev=>({...prev,[activeSpace]:(prev[activeSpace]||[]).map(n=>({
+      ...n, tasks: n.tasks.map(t => t.done ? {...t, archived: true} : t)
+    }))}));
+    // Archive completed standalone tasks
+    setStandaloneTasks(prev=>({...prev,[activeSpace]:(prev[activeSpace]||[]).map(t => t.done ? {...t, archived: true} : t)}));
+  }
   function editNoteTask(noteId, taskId, newText) {
     setAllNotes(prev=>({...prev,[activeSpace]:(prev[activeSpace]||[]).map(n=>n.id===noteId?{...n,tasks:n.tasks.map(tk=>tk.id===taskId?{...tk,text:newText}:tk)}:n)}));
     if (active && active.id === noteId) {
@@ -612,7 +672,7 @@ export function AppProvider({ children }) {
     // actions
     switchSpace, createNote, createTask, quickCapture, handleIntent, handleTaskIntent,
     openNote, saveNote, triggerAutoSave, toggleTask, toggleTaskInList, toggleStandaloneTask,
-    addTask, removeTask, setTaskDueDate, setStandaloneTaskDueDate, editStandaloneTask, editNoteTask,
+    addTask, removeTask, setTaskDueDate, setStandaloneTaskDueDate, editStandaloneTask, editNoteTask, removeStandaloneTask, archiveDoneTasks,
     handleLinkSelect, toggleTag, setNoteFolder, reorderNotes, reorderTasks, deleteNote, archiveNote, unarchiveNote,
     exportNoteMd,
   };

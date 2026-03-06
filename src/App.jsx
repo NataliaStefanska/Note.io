@@ -24,7 +24,7 @@ const SettingsView = lazy(() => import("./views/SettingsView"));
 
 export default function App() {
   const {
-    user, authLoading, t, space, spaces, setSpaces, active,
+    user, authLoading, loginError, t, space, spaces, setSpaces, active,
     showIntent, showTask, setShowTask, showSpaceMgr, setShowSpaceMgr,
     showDeleteConfirm, setShowDeleteConfirm, showSaveToast,
     showDrawer, setShowDrawer, filterTag,
@@ -54,7 +54,7 @@ export default function App() {
   );
 
   // Not logged in
-  if (!user) return <LoginScreen onLogin={handleLogin} t={t} />;
+  if (!user) return <LoginScreen onLogin={handleLogin} loginError={loginError} t={t} />;
 
   function handleIntentConfirm(intent) {
     handleIntent(intent);

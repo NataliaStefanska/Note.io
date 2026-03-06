@@ -19,7 +19,7 @@ export function useApp() {
 
 export function AppProvider({ children }) {
   // Consume sub-contexts
-  const { user, authLoading, handleLogin, handleLogout } = useAuth();
+  const { user, authLoading, loginError, handleLogin, handleLogout } = useAuth();
   const {
     lang, setLang, theme, setTheme, t,
     showIntent, setShowIntent, showTask, setShowTask,
@@ -580,7 +580,7 @@ export function AppProvider({ children }) {
 
   const value = {
     // from AuthContext
-    user, authLoading, handleLogin, handleLogout,
+    user, authLoading, loginError, handleLogin, handleLogout,
     // from UIContext
     lang, setLang, theme, setTheme, t,
     showIntent, setShowIntent, showTask, setShowTask,

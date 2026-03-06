@@ -2,7 +2,8 @@ export const T = {
   pl: {
     loginTagline:"Twoje notatki. Twoje zasady.", loginSync:"Synchronizacja mi\u0119dzy urz\u0105dzeniami",
     loginSpaces:"Oddzielne przestrzenie robocze", loginGraph:"Graf po\u0142\u0105cze\u0144 mi\u0119dzy notatkami",
-    loginBtn:"Zaloguj si\u0119 przez Google", loginLegal:"Loguj\u0105c si\u0119 akceptujesz regulamin \u00B7 Twoje dane s\u0105 tylko Twoje",
+    loginBtn:"Zaloguj si\u0119 przez Google", loginLoading:"Logowanie...", loginFailed:"Logowanie nie powiod\u0142o si\u0119. Spr\u00F3buj ponownie.",
+    loginLegal:"Loguj\u0105c si\u0119 akceptujesz regulamin \u00B7 Twoje dane s\u0105 tylko Twoje",
     intentQ:"Po co ta notatka?", intentSub:"Jaki cel ma spe\u0142nia\u0107 ta notatka?",
     intentPh:"np. \u017Ceby nie zapomnie\u0107 decyzji ze spotkania...", intentSkip:"Pomi\u0144", intentOk:"Zacznij pisa\u0107 \u2192",
     taskQ:"Po co to zadanie?", taskSub:"Co si\u0119 zmieni gdy je zrobisz?",
@@ -78,7 +79,8 @@ export const T = {
   en: {
     loginTagline:"Your notes. Your rules.", loginSync:"Cross-device synchronization",
     loginSpaces:"Separate workspaces", loginGraph:"Connection graph between notes",
-    loginBtn:"Sign in with Google", loginLegal:"By signing in you accept the terms \u00B7 Your data is yours only",
+    loginBtn:"Sign in with Google", loginLoading:"Signing in...", loginFailed:"Login failed. Please try again.",
+    loginLegal:"By signing in you accept the terms \u00B7 Your data is yours only",
     intentQ:"What is this note for?", intentSub:"What purpose should this note serve?",
     intentPh:"e.g. to not forget decisions from the meeting...", intentSkip:"Skip", intentOk:"Start writing \u2192",
     taskQ:"What is this task for?", taskSub:"What will change when you do it?",

@@ -1,6 +1,6 @@
 import { createContext, useContext, useState, useRef, useEffect, useCallback, useMemo } from "react";
 import {
-  loadAllData, saveUserPrefs, deleteNoteFirestore,
+  loadAllData, saveUserPrefs, deleteNoteFirestore, deleteTaskFirestore,
   saveAllSpaces, saveAllNotes, saveAllTasks,
 } from "../firebase";
 import { getToday, INITIAL_SPACES, INITIAL_NOTES, daysSince } from "../constants/data";
@@ -192,9 +192,27 @@ export function AppProvider({ children }) {
             const prevTasks = prevStandaloneTasks.current ? prevStandaloneTasks.current[spaceId] : null;
             if (tasks !== prevTasks) promises.push(saveAllTasks(user.uid, tasks, spaceId));
           }
+          // Delete tasks that were removed from a space
+          if (prevStandaloneTasks.current) {
+            for (const [spaceId, prevTasks] of Object.entries(prevStandaloneTasks.current)) {
+              const currentTasks = standaloneTasks[spaceId] || [];
+              const currentIds = new Set(currentTasks.map(t => t.id));
+              (prevTasks || []).forEach(t => {
+                if (!currentIds.has(t.id)) promises.push(deleteTaskFirestore(user.uid, t.id));
+              });
+            }
+          }
           prevStandaloneTasks.current = standaloneTasks;
         }
-        if (promises.length > 0) await Promise.all(promises);
+        if (promises.length > 0) {
+          const results = await Promise.allSettled(promises);
+          const failures = results.filter(r => r.status === "rejected");
+          if (failures.length > 0) {
+            failures.forEach(f => console.warn("Firebase sync partial failure:", f.reason?.message || f.reason));
+            setSyncStatus("error");
+            return;
+          }
+        }
         setSyncStatus("synced");
       } catch (err) {
         console.warn("Firebase sync failed:", err?.message || err);

@@ -13,13 +13,14 @@ service cloud.firestore {
           && request.resource.data.name is string
           && request.resource.data.emoji is string
           && request.resource.data.color is string;
+        allow delete: if request.auth != null && request.auth.uid == uid;
       }
 
       // Notes: validate schema
       match /notes/{noteId} {
         allow read: if request.auth != null && request.auth.uid == uid;
         allow write: if request.auth != null && request.auth.uid == uid
-          && request.resource.data.keys().hasOnly(['title', 'content', 'tags', 'linkedNotes', 'tasks', 'intent', 'updatedAt', 'lastOpened', 'archived', 'spaceId', 'folder'])
+          && request.resource.data.keys().hasOnly(['title', 'content', 'tags', 'linkedNotes', 'tasks', 'intent', 'updatedAt', 'lastOpened', 'archived', 'spaceId', 'folder', 'references'])
           && request.resource.data.title is string
           && request.resource.data.content is string
           && request.resource.data.tags is list

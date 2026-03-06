@@ -1,4 +1,5 @@
-import { useState, useRef, useEffect } from "react";
+import { useState, useRef, useEffect, useCallback } from "react";
+import { createPortal } from "react-dom";
 
 function addDays(d, n) {
   const date = d ? new Date(d) : new Date();
@@ -22,18 +23,39 @@ function formatShort(dateStr) {
 
 export default function DueDatePicker({ value, onChange, t }) {
   const [open, setOpen] = useState(false);
-  const ref = useRef();
+  const [pos, setPos] = useState({ top: 0, left: 0 });
+  const btnRef = useRef();
+  const dropRef = useRef();
   const today = new Date().toISOString().split("T")[0];
   const display = formatShort(value);
 
+  const updatePos = useCallback(() => {
+    if (!btnRef.current) return;
+    const rect = btnRef.current.getBoundingClientRect();
+    const dropW = 220;
+    let left = rect.right - dropW;
+    if (left < 8) left = 8;
+    if (left + dropW > window.innerWidth - 8) left = window.innerWidth - dropW - 8;
+    setPos({ top: rect.bottom + 4, left });
+  }, []);
+
   useEffect(() => {
     if (!open) return;
+    updatePos();
     function handleClick(e) {
-      if (ref.current && !ref.current.contains(e.target)) setOpen(false);
+      if (btnRef.current?.contains(e.target)) return;
+      if (dropRef.current?.contains(e.target)) return;
+      setOpen(false);
     }
     document.addEventListener("mousedown", handleClick);
-    return () => document.removeEventListener("mousedown", handleClick);
-  }, [open]);
+    window.addEventListener("scroll", updatePos, true);
+    window.addEventListener("resize", updatePos);
+    return () => {
+      document.removeEventListener("mousedown", handleClick);
+      window.removeEventListener("scroll", updatePos, true);
+      window.removeEventListener("resize", updatePos);
+    };
+  }, [open, updatePos]);
 
   const chipStyle = (active) => ({
     fontSize: 11, padding: "4px 10px", borderRadius: 12,
@@ -43,8 +65,9 @@ export default function DueDatePicker({ value, onChange, t }) {
   });
 
   return (
-    <div ref={ref} style={{ position: "relative", flexShrink: 0 }}>
+    <div style={{ flexShrink: 0 }}>
       <button
+        ref={btnRef}
         onClick={() => setOpen(v => !v)}
         style={{
           fontSize: 11, padding: "3px 8px", borderRadius: 6,
@@ -58,11 +81,11 @@ export default function DueDatePicker({ value, onChange, t }) {
       >
         {display ? display.label : (t.edDueDate || "Due date")}
       </button>
-      {open && (
-        <div style={{
-          position: "absolute", top: "100%", right: 0, marginTop: 4,
+      {open && createPortal(
+        <div ref={dropRef} style={{
+          position: "fixed", top: pos.top, left: pos.left,
           background: "var(--bg-surface)", border: "1px solid var(--border)",
-          borderRadius: 10, padding: 8, zIndex: 500, minWidth: 200,
+          borderRadius: 10, padding: 8, zIndex: 9999, minWidth: 200, maxWidth: 220,
           boxShadow: "0 8px 24px var(--shadow)",
           display: "flex", flexDirection: "column", gap: 6,
         }}>
@@ -99,7 +122,8 @@ export default function DueDatePicker({ value, onChange, t }) {
               {t.tvClear || "Clear"}
             </button>
           )}
-        </div>
+        </div>,
+        document.body
       )}
     </div>
   );
